@@ -1,79 +1,66 @@
 #include "main.h"
 
-/**
- * check_specifier - function pointer for check_spec
- * @format: characters after % i.e. c, s and %.
- * Return: function to run.
- */
-int (*check_specifier(const char *format))(va_list)
-{
-	int i;
-
-	print_struct p[9] = {
-		{"c", print_c},
-		{"s", print_s},
-		{"%", print_cent},
-		{"i", print_int},
-		{"d", print_deci},
-		{"b", print_base2},
-		{"o", print_base8_o},
-		{"u", print_int_u},
-		{NULL, NULL}
-	};
-
-	for (i = 0; i < 8; i++)
-	{
-		if ((*p[i].t) == *format)
-			break;
-	}
-	return (p[i].funct);
-}
+void print_buffer(char buffer[], int *buff_ind);
 
 /**
- * _printf - printf funtion for specifiers
- * @format: unknown variable types.
- * Return: count.
+ * _printf - Printf function
+ * @format: format.
+ * Return: Printed chars.
  */
 int _printf(const char *format, ...)
 {
-	int i, count = 0;/* i for looping and count =  characters printed */
-	int ret_count = 0; /* Value returned when check_specifier is call */
-	va_list ap;
-	int (*valist_funct_ptr)(va_list); /* funtion pointer */
+	int i, printed = 0, printed_chars = 0;
+	int flags, width, precision, size, buff_ind = 0;
+	va_list list;
+	char buffer[BUFF_SIZE];
 
-	va_start(ap, format);
-	if (format == NULL)/* check if format is a NULL pointer */
+	if (format == NULL)
 		return (-1);
-	while (format[i])
+
+	va_start(list, format);
+
+	for (i = 0; format && format[i] != '\0'; i++)
 	{
 		if (format[i] != '%')
 		{
-			_putchar(format[i]);
-			count = count + 1;
-			i++;
-			continue;
+			buffer[buff_ind++] = format[i];
+			if (buff_ind == BUFF_SIZE)
+				print_buffer(buffer, &buff_ind);
+			/* write(1, &format[i], 1);*/
+			printed_chars++;
 		}
-		if (format[i] == '%')
-		{	/* funtion ptr assignment to checkspecifier */
-			valist_funct_ptr = check_specifier(&format[i + 1]);
-			if (valist_funct_ptr != NULL)
-			{
-				ret_count = valist_funct_ptr(ap);
-				count = count + ret_count;
-				i = i + 2; /* New index point i.e after the specifier characters */
-				continue;
-			}
-			if (valist_funct_ptr == NULL)/* if the checkspecifier returns NULL */
-				break;
-			_putchar(format[i]);/* continue printing with the new index [i + 1] */
-			count++;
-			if (format[i + 1] == '%')
-				i = i + 2;
-			else
-				i++;
+		else
+		{
+			print_buffer(buffer, &buff_ind);
+			flags = get_flags(format, &i);
+			width = get_width(format, &i, list);
+			precision = get_precision(format, &i, list);
+			size = get_size(format, &i);
+			++i;
+			printed = handle_print(format, &i, list, buffer,
+				flags, width, precision, size);
+			if (printed == -1)
+				return (-1);
+			printed_chars += printed;
 		}
-		i++;
 	}
-	va_end(ap);
-	return (count);
+
+	print_buffer(buffer, &buff_ind);
+
+	va_end(list);
+
+	return (printed_chars);
+}
+
+/**
+ * print_buffer - Prints the contents of the buffer if it exist
+ * @buffer: Array of chars
+ * @buff_ind: Index at which to add next char, represents the length.
+ */
+void print_buffer(char buffer[], int *buff_ind)
+{
+	if (*buff_ind > 0)
+		write(1, &buffer[0], *buff_ind);
+
+	*buff_ind = 0;
 }
